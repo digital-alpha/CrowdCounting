@@ -70,7 +70,6 @@ def object_detection_video(model, device, transform):
                     img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
 
                 out.write(img_to_draw)
-                cv2.imshow("image", image)
             else:
                 break
 
