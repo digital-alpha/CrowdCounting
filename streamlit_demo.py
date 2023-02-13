@@ -1,6 +1,8 @@
+import pandas as pd
 import streamlit as st
 import moviepy.editor as moviepy
 from PIL import Image
+import matplotlib.pyplot as plt
 import cv2
 from engine import *
 from models import build_model
@@ -33,7 +35,7 @@ def object_detection_video(model, device, transform):
         h = h // 128 * 64
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("detected_video.mp4", fourcc, 20.0, (w, h))
-
+        data_flow = []
         while True:
             _, image = cap.read()
             if _:
@@ -70,9 +72,13 @@ def object_detection_video(model, device, transform):
                     img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
 
                 out.write(img_to_draw)
+                data_flow.append(predict_cnt)
             else:
                 break
 
+        new = pd.DataFrame()
+        new["Count"] = data_flow
+        st.line_chart(new)
         cap.release()
         cv2.destroyAllWindows()
 
@@ -114,7 +120,6 @@ def object_detection_image(model, device, transform):
         points = outputs_points[outputs_scores > threshold].detach().cpu().numpy().tolist()
         predict_cnt = int((outputs_scores > threshold).sum())
 
-        print(predict_cnt)
         # draw the predictions
         size = 2
         img_to_draw = np.array(img_raw)
@@ -122,6 +127,7 @@ def object_detection_image(model, device, transform):
             img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
 
         st.image(img_to_draw, caption='Processed Image.')
+        st.write(predict_cnt)
         my_bar.progress(100)
 
 
