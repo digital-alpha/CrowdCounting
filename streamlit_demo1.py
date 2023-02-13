@@ -58,15 +58,17 @@ def object_detection_video(model, device, transform):
 
                     outputs = model(img).cpu().numpy()
 
+                    print(outputs.shape)
+
                     predict_cnt = np.sum(outputs) / 1000
 
-                    img_to_draw = np.uint8(np.array(outputs.squeeze()) * 31)
+                    outputs = np.uint8(outputs.squeeze() * 255 / outputs.max())
 
-                    img_to_draw = cv2.cvtColor(img_to_draw, cv2.COLOR_GRAY2BGR)
+                    outputs = cv2.cvtColor(outputs, cv2.COLOR_GRAY2BGR)
 
-                    print(img_to_draw.shape)
+                    outputs = cv2.addWeighted(image, 0.5, outputs, 0.5, 0)
 
-                    out.write(img_to_draw)
+                    out.write(outputs)
                     data_flow.append(predict_cnt)
                 else:
                     break
@@ -100,11 +102,15 @@ def object_detection_image(model, device, transform):
             model.eval()
             outputs = model(samples).cpu().numpy()
 
-        predict_cnt = np.sum(outputs)/1000
+        predict_cnt = np.sum(outputs) / 1000
 
         img_to_draw = np.array(outputs.squeeze())
 
-        img_to_draw = (img_to_draw*255/img_to_draw.max()).astype(int)
+        img_to_draw = np.uint8(img_to_draw * 255 / img_to_draw.max())
+        img_raw = np.array(img_raw)
+        img_to_draw = cv2.cvtColor(img_to_draw, cv2.COLOR_GRAY2BGR)
+
+        img_to_draw = cv2.addWeighted(img_raw, 0.5, img_to_draw, 0.5, 0)
 
         st.image(img_to_draw, caption='Processed Image.')
         st.write(predict_cnt)
