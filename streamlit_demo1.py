@@ -4,6 +4,7 @@ import moviepy.editor as moviepy
 from PIL import Image
 import cv2
 from engine import *
+from model import SASNet
 from models import build_model
 
 
@@ -30,50 +31,45 @@ def object_detection_video(model, device, transform):
         cap = cv2.VideoCapture(vid)
         _, image = cap.read()
         h, w = image.shape[:2]
-        w = w // 128 * 64
-        h = h // 128 * 64
+        w = w // 128 * 128
+        h = h // 128 * 128
+        print(w, h)
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("detected_video.mp4", fourcc, 20.0, (w, h))
         data_flow = []
-        while True:
-            _, image = cap.read()
-            if _:
+        with torch.no_grad():
+            model.eval()
+            while True:
+                _, image = cap.read()
+                if _:
 
-                # round the size
-                width, height, _ = image.shape
-                print(width, height)
-                new_width = width // 128 * 64
-                new_height = height // 128 * 64
-                image = cv2.resize(image, (new_height, new_width))
-                # pre-processing
-                img = transform(image)
+                    # round the size
+                    width, height, _ = image.shape
+                    new_width = width // 128 * 128
+                    new_height = height // 128 * 128
+                    image = cv2.resize(image, (new_height, new_width))
 
-                print(img.shape)
+                    print(image.shape)
 
-                samples = torch.Tensor(img).unsqueeze(0)
-                samples = samples.to(device)
-                # run inference
-                outputs = model(samples)
-                outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
+                    # pre-processing
+                    img = transform(image)
 
-                outputs_points = outputs['pred_points'][0]
+                    img = img.unsqueeze(0).to(device)
 
-                threshold = 0.5
-                # filter the predictions
-                points = outputs_points[outputs_scores > threshold].detach().cpu().numpy().tolist()
-                predict_cnt = int((outputs_scores > threshold).sum())
+                    outputs = model(img).cpu().numpy()
 
-                print(predict_cnt)
-                # draw the predictions
-                size = 2
-                img_to_draw = np.array(image)
-                for p in points:
-                    img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
+                    predict_cnt = np.sum(outputs) / 1000
 
-                out.write(img_to_draw)
-                data_flow.append(predict_cnt)
-            else:
-                break
+                    img_to_draw = np.uint8(np.array(outputs.squeeze()) * 31)
+
+                    img_to_draw = cv2.cvtColor(img_to_draw, cv2.COLOR_GRAY2BGR)
+
+                    print(img_to_draw.shape)
+
+                    out.write(img_to_draw)
+                    data_flow.append(predict_cnt)
+                else:
+                    break
 
         new = pd.DataFrame()
         new["Count"] = data_flow
@@ -89,41 +85,26 @@ def object_detection_image(model, device, transform):
     """)
     file = st.file_uploader('Upload Image', type=['jpg', 'png', 'jpeg'])
     if file is not None:
-
         img_raw = Image.open(file).convert('RGB')
 
         st.image(img_raw, caption="Uploaded Image")
         my_bar = st.progress(0)
 
-        # round the size
-        width, height = img_raw.size
-        print(width, height)
-        new_width = width // 128 * 64
-        new_height = height // 128 * 64
-        img_raw = img_raw.resize((new_width, new_height), Image.ANTIALIAS)
-        # pre-processing
-        img = img_raw
+        samples = transform(img_raw).unsqueeze(0)
 
-        print(img.shape)
+        print(samples.shape)
 
-        samples = torch.Tensor(img).unsqueeze(0)
         samples = samples.to(device)
-        # run inference
-        outputs = model(samples)
-        outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
 
-        outputs_points = outputs['pred_points'][0]
+        with torch.no_grad():
+            model.eval()
+            outputs = model(samples).cpu().numpy()
 
-        threshold = 0.5
-        # filter the predictions
-        points = outputs_points[outputs_scores > threshold].detach().cpu().numpy().tolist()
-        predict_cnt = int((outputs_scores > threshold).sum())
+        predict_cnt = np.sum(outputs)/1000
 
-        # draw the predictions
-        size = 2
-        img_to_draw = np.array(img_raw)
-        for p in points:
-            img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
+        img_to_draw = np.array(outputs.squeeze())
+
+        img_to_draw = (img_to_draw*255/img_to_draw.max()).astype(int)
 
         st.image(img_to_draw, caption='Processed Image.')
         st.write(predict_cnt)
@@ -135,29 +116,21 @@ def main():
     read_me_0 = st.markdown(new_title, unsafe_allow_html=True)
 
     args = {
-        "backbone": "vgg16_bn",
-        "row": 2,
-        "line": 2,
-        "output_dir": "./logs/",
-        "weight_path": "./weights/SHTechA.pth",
-        "gpu_id": 0
+        "model_path": "./models/SHHA.pth",
+        "block_size": 32,
+        "log_para": 1000,
+        "batch_size": 4
     }
 
     device = torch.device('cpu')
 
-    # get the P2PNet
-    model = build_model(args)
+    model = SASNet(args=args)
+    # load the trained model
+    model.load_state_dict(torch.load(args["model_path"], map_location=device))
+    print('successfully load model from', args["model_path"])
 
     # move to GPU
     model.to(device)
-
-    # load trained model
-    if args["weight_path"] is not None:
-        checkpoint = torch.load(args["weight_path"], map_location=device)
-        model.load_state_dict(checkpoint['model'])
-
-    # convert to eval mode
-    model.eval()
 
     # create the pre-processing transform
     transform = standard_transforms.Compose([
