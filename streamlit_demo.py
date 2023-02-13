@@ -29,8 +29,9 @@ def object_detection_video(model, device, transform):
         cap = cv2.VideoCapture(vid)
         _, image = cap.read()
         h, w = image.shape[:2]
-
-        fourcc = cv2.VideoWriter_fourcc(*'mpv4')
+        w = w // 128 * 128
+        h = h // 128 * 128
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("detected_video.mp4", fourcc, 20.0, (w, h))
 
         while True:
@@ -40,8 +41,8 @@ def object_detection_video(model, device, transform):
                 # round the size
                 width, height, _ = image.shape
                 print(width, height)
-                new_width = width // 128 * 32
-                new_height = height // 128 * 32
+                new_width = width // 128 * 128
+                new_height = height // 128 * 128
                 image = cv2.resize(image, (new_height, new_width))
                 # pre-processing
                 img = transform(image)
@@ -69,10 +70,7 @@ def object_detection_video(model, device, transform):
                     img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
 
                 out.write(img_to_draw)
-                # cv2.imshow("image", image)
-                #
-                # if ord("q") == cv2.waitKey(1):
-                #     break
+                cv2.imshow("image", image)
             else:
                 break
 
