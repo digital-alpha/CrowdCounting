@@ -122,7 +122,7 @@ def main():
         "batch_size": 4
     }
 
-    device = torch.device('cpu')
+    device = torch.device('cuda')
 
     model = SASNet(args=args)
     # load the trained model
