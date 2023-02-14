@@ -29,10 +29,7 @@ def object_detection_video(model, device, transform):
         st.write("Uploaded Video")
 
         cap = cv2.VideoCapture(vid)
-        _, image = cap.read()
-        h, w = image.shape[:2]
-        w = w // 128 * 128
-        h = h // 128 * 128
+        w, h = 1024, 768
         print(w, h)
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("detected_video.mp4", fourcc, 20.0, (w, h))
@@ -43,11 +40,7 @@ def object_detection_video(model, device, transform):
                 _, image = cap.read()
                 if _:
 
-                    # round the size
-                    width, height, _ = image.shape
-                    new_width = width // 128 * 128
-                    new_height = height // 128 * 128
-                    image = cv2.resize(image, (new_height, new_width))
+                    image = cv2.resize(image, (1024, 768))
 
                     print(image.shape)
 
