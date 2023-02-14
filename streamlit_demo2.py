@@ -124,7 +124,7 @@ def main():
     device = torch.device('cuda')
 
     import onnxruntime
-    ort_session = onnxruntime.InferenceSession("models/SHHA.onnx")
+    ort_session = onnxruntime.InferenceSession("models/SHHA.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
 
     # create the pre-processing transform
     transform = standard_transforms.Compose([
