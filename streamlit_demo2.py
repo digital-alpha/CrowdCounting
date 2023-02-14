@@ -13,7 +13,6 @@ def to_numpy(tensor):
 
 
 def object_detection_video(ort_session, device, transform):
-
     st.title("Crowd Detection for Videos")
     st.subheader("""
     
@@ -36,31 +35,33 @@ def object_detection_video(ort_session, device, transform):
         w, h = 1024, 768
         print(w, h)
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter("detected_video.mp4", fourcc, 20.0, (w, h))
+        out = cv2.VideoWriter("detected_video.mp4", fourcc, 5.0, (w, h))
         data_flow = []
         while True:
             _, image = cap.read()
             if _:
 
-                image = cv2.resize(image, (1024, 768))
+                if len(data_flow) % 10 == 0:
 
-                print(image.shape)
+                    image = cv2.resize(image, (1024, 768))
+                    print(image.shape)
 
-                # pre-processing
-                img = transform(image)
-                img = img.unsqueeze(0)
+                    # pre-processing
+                    img = transform(image)
+                    img = img.unsqueeze(0)
 
-                ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(img)}
-                ort_outs = ort_session.run(None, ort_inputs)
-                outputs = np.array(ort_outs[0])
+                    ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(img)}
+                    ort_outs = ort_session.run(None, ort_inputs)
+                    outputs = np.array(ort_outs[0])
 
-                predict_cnt = np.sum(outputs) / 1000
+                    predict_cnt = np.sum(outputs) / 1000
 
-                outputs = np.uint8(outputs.squeeze() * 255 / outputs.max())
-                outputs = cv2.cvtColor(outputs, cv2.COLOR_GRAY2BGR)
-                outputs = cv2.addWeighted(image, 0.5, outputs, 0.5, 0)
+                    outputs = np.uint8(outputs.squeeze() * 255 / outputs.max())
+                    outputs = cv2.cvtColor(outputs, cv2.COLOR_GRAY2BGR)
+                    outputs = cv2.addWeighted(image, 0.5, outputs, 0.5, 0)
 
-                out.write(outputs)
+                    out.write(outputs)
+
                 data_flow.append(predict_cnt)
             else:
                 break
@@ -124,7 +125,8 @@ def main():
     device = torch.device('cuda')
 
     import onnxruntime
-    ort_session = onnxruntime.InferenceSession("models/SHHA.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+    ort_session = onnxruntime.InferenceSession("models/SHHA.onnx",
+                                               providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
 
     # create the pre-processing transform
     transform = standard_transforms.Compose([
