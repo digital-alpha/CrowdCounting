@@ -53,19 +53,13 @@ def object_detection_video(model, device, transform):
 
                     # pre-processing
                     img = transform(image)
-
                     img = img.unsqueeze(0).to(device)
-
                     outputs = model(img).cpu().numpy()
-
-                    print(outputs.shape)
 
                     predict_cnt = np.sum(outputs) / 1000
 
                     outputs = np.uint8(outputs.squeeze() * 255 / outputs.max())
-
                     outputs = cv2.cvtColor(outputs, cv2.COLOR_GRAY2BGR)
-
                     outputs = cv2.addWeighted(image, 0.5, outputs, 0.5, 0)
 
                     out.write(outputs)

@@ -47,10 +47,10 @@ class Conv2d(nn.Module):
 
 # the main implementation of the SASNet
 class SASNet(nn.Module):
-    def __init__(self, pretrained=False, args=None):
+    def __init__(self, weights=None, args=None):
         super(SASNet, self).__init__()
         # define the backbone network
-        vgg = models.vgg16_bn(pretrained=pretrained)
+        vgg = models.vgg16_bn(weights=weights)
 
         features = list(vgg.features.children())
         # get each stage of the backbone
@@ -148,22 +148,22 @@ class SASNet(nn.Module):
         # begining of decoding
         x = self.de_pred5(x5)
         x5_out = x
-        x = F.upsample_bilinear(x, size=x4.size()[2:])
+        x = F.interpolate(x, size=x4.size()[2:])
 
         x = torch.cat([x4, x], 1)
         x = self.de_pred4(x)
         x4_out = x
-        x = F.upsample_bilinear(x, size=x3.size()[2:])
+        x = F.interpolate(x, size=x3.size()[2:])
 
         x = torch.cat([x3, x], 1)
         x = self.de_pred3(x)
         x3_out = x
-        x = F.upsample_bilinear(x, size=x2.size()[2:])
+        x = F.interpolate(x, size=x2.size()[2:])
 
         x = torch.cat([x2, x], 1)
         x = self.de_pred2(x)
         x2_out = x
-        x = F.upsample_bilinear(x, size=x1.size()[2:])
+        x = F.interpolate(x, size=x1.size()[2:])
 
         x = torch.cat([x1, x], 1)
         x = self.de_pred1(x)
@@ -187,23 +187,23 @@ class SASNet(nn.Module):
         x2_confi = self.confidence_head2(x2_confi)
         x1_confi = self.confidence_head1(x1_confi)
         # upsample the density prediction to be the same with the input size
-        x5_density = F.upsample_nearest(x5_density, size=x1.size()[2:])
-        x4_density = F.upsample_nearest(x4_density, size=x1.size()[2:])
-        x3_density = F.upsample_nearest(x3_density, size=x1.size()[2:])
-        x2_density = F.upsample_nearest(x2_density, size=x1.size()[2:])
-        x1_density = F.upsample_nearest(x1_density, size=x1.size()[2:])
+        x5_density = F.interpolate(x5_density, size=x1.size()[2:])
+        x4_density = F.interpolate(x4_density, size=x1.size()[2:])
+        x3_density = F.interpolate(x3_density, size=x1.size()[2:])
+        x2_density = F.interpolate(x2_density, size=x1.size()[2:])
+        x1_density = F.interpolate(x1_density, size=x1.size()[2:])
         # upsample the confidence prediction to be the same with the input size
-        x5_confi_upsample = F.upsample_nearest(x5_confi, size=x1.size()[2:])
-        x4_confi_upsample = F.upsample_nearest(x4_confi, size=x1.size()[2:])
-        x3_confi_upsample = F.upsample_nearest(x3_confi, size=x1.size()[2:])
-        x2_confi_upsample = F.upsample_nearest(x2_confi, size=x1.size()[2:])
-        x1_confi_upsample = F.upsample_nearest(x1_confi, size=x1.size()[2:])
+        x5_confi_upsample = F.interpolate(x5_confi, size=x1.size()[2:])
+        x4_confi_upsample = F.interpolate(x4_confi, size=x1.size()[2:])
+        x3_confi_upsample = F.interpolate(x3_confi, size=x1.size()[2:])
+        x2_confi_upsample = F.interpolate(x2_confi, size=x1.size()[2:])
+        x1_confi_upsample = F.interpolate(x1_confi, size=x1.size()[2:])
 
         # =============================================================================================================
         # soft √
         confidence_map = torch.cat([x5_confi_upsample, x4_confi_upsample,
                                     x3_confi_upsample, x2_confi_upsample, x1_confi_upsample], 1)
-        confidence_map = torch.nn.functional.sigmoid(confidence_map)
+        confidence_map = torch.sigmoid(confidence_map)
 
         # use softmax to normalize
         confidence_map = torch.nn.functional.softmax(confidence_map, 1)
